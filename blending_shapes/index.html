@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script   src="https://code.jquery.com/jquery-3.1.0.slim.min.js"   integrity="sha256-cRpWjoSOw5KcyIOaZNo4i6fZ9tKPhYYb6i5T9RSVJG8="   crossorigin="anonymous"></script>
     <script src="http://webglfundamentals.org/webgl/resources/webgl-utils.js"></script>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.0/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
     <style>
         #canvas {
             border:1px solid black;
@@ -13,7 +15,11 @@
 </head>
 <body>
 
-<canvas id="canvas" width="400" height="400"></canvas>
+<canvas id="canvas" width="600" height="600"></canvas>
+<br>
+<br>
+<div id="slider_1" style="width:575px;margin:20px;"></div>
+<div id="slider_2" style="width:575px;margin:20px;"></div>
 
 <script id="2d-vertex-shader" type="x-shader/x-vertex">
 attribute vec2 a_position;
@@ -42,8 +48,7 @@ uniform vec4 u_color;
 uniform float u_alpha;
 
 void main() {
-    vec4 u_color_2 = vec4(u_color.r, u_color.g, u_color.b, u_color.a * u_alpha);
-    gl_FragColor = u_color_2;
+    gl_FragColor = vec4(u_color.r, u_color.g, u_color.b, u_color.a * u_alpha);
 }
 </script>
 
@@ -53,91 +58,140 @@ void main() {
         $('body').append(msg);
     }
 
+    $("#slider_1").slider({
+        value: 100,
+        slide: function( event, ui ) {
+            alphas.one = ui.value / 100;
+            drawScene();
+        },
+        change: function( event, ui ) {
+            alphas.one = ui.value / 100;
+            drawScene();
+        }
+    });
+
+    $("#slider_2").slider({
+        value: 100,
+        slide: function( event, ui ) {
+            alphas.two = ui.value / 100;
+            drawScene();
+        },
+        change: function( event, ui ) {
+            alphas.two = ui.value / 100;
+            drawScene();
+        }
+    });
+
     var canvas = document.getElementById("canvas");
     var gl = canvas.getContext("experimental-webgl");
 
-    try {
-        (function(){
-            // setup a GLSL program
-            var program = createProgramFromScripts(gl, ["2d-vertex-shader", "2d-fragment-shader"]);
-            gl.useProgram(program);
+    // setup a GLSL program
+    var program = createProgramFromScripts(gl, ["2d-vertex-shader", "2d-fragment-shader"]);
+    gl.useProgram(program);
 
-            // look up where thse vertex data needs to go.
-            var positionLocation = gl.getAttribLocation(program, "a_position");
+    // look up where thse vertex data needs to go.
+    var positionLocation = gl.getAttribLocation(program, "a_position");
 
-            // set the resolution
-            var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
-            gl.uniform2f(resolutionLocation, canvas.width * 2, canvas.height * 2);
+    // set the resolution
+    var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+    gl.uniform2f(resolutionLocation, canvas.width * 2, canvas.height * 2);
 
-            var alphaUniform = gl.getUniformLocation(program, "u_alpha");
-            gl.uniform1f(alphaUniform, 0.5);
+    var alphaUniform = gl.getUniformLocation(program, "u_alpha");
 
-            // get the colorLocation
-            var colorLocation = gl.getUniformLocation(program, "u_color");
+    // get the colorLocation
+    var colorLocation = gl.getUniformLocation(program, "u_color");
 
-            // Create a buffer and put a single clipspace rectangle in
-            // it (2 triangles)
-            var buffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-            gl.enableVertexAttribArray(positionLocation);
-            gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    // Create a buffer and put a single clipspace rectangle in
+    // it (2 triangles)
+    var buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-            gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND);
 
-            drawDiamond(200,200,300,300);
-            gl.uniform4f(colorLocation, 1, 0, 0, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+    function randomInt(range) {
+        return Math.floor(Math.random() * range);
+    }
 
-            drawDiamond(300,200,300,300);
-            gl.uniform4f(colorLocation, 0, 0, 1, 1);
-            gl.drawArrays(gl.TRIANGLES, 0, 6);
+    function drawDiamond(x,y,width,height,group) {
+        var     x1 = x,
+                y1 = y + height / 2,
+                x2 = x + width / 2,
+                y2 = y,
+                x3 = x + width,
+                y3 = y1,
+                x4 = x2,
+                y4 = y + height;
 
-            /*
-            for(let i = 0; i < 100; i++) {
-                drawDiamond(randomInt(700),randomInt(700),100,100);
+        var diamond = new Float32Array([
+            x1, y1,
+            x2, y2,
+            x3, y3,
+            x3, y3,
+            x4, y4,
+            x1, y1]);
 
-                // Set a random color.
-                gl.uniform4f(colorLocation, Math.random(), Math.random(), Math.random(), 1);
+        var colors = {r:Math.random(), g:Math.random(), b:Math.random(), a:1};
 
-                // draw
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-            }
-            */
+        var diamondObjc = {
+            vertex: diamond,
+            fragment: colors,
+            group: Math.round(Math.random()) + 1,
+        };
 
+        if(typeof group != "undefined") diamondObjc.group = group;
 
-            function randomInt(range) {
-                return Math.floor(Math.random() * range);
-            }
-
-            function drawDiamond(x,y,width,height) {
-                var     x1 = x,
-                        y1 = y + height / 2,
-                        x2 = x + width / 2,
-                        y2 = y,
-                        x3 = x + width,
-                        y3 = y1,
-                        x4 = x2,
-                        y4 = y + height;
-
-                gl.bufferData(
-                        gl.ARRAY_BUFFER,
-                        new Float32Array([
-                            x1, y1,
-                            x2, y2,
-                            x3, y3,
-                            x3, y3,
-                            x4, y4,
-                            x1, y1]),
-                        gl.STATIC_DRAW);
-
-            }
-        })();
-    } catch (e) {
+        return diamondObjc;
 
     }
 
+    var diamonds = [];
 
+    for(let i = 0; i < 100; i++) {
+        let size = randomInt(200);
+        diamonds.push(drawDiamond(randomInt(1200) - 100,randomInt(1200) - 100,size,size));
+    }
+
+
+    /*
+    diamonds.push(drawDiamond(200,200, 400, 400, 1));
+    diamonds.push(drawDiamond(200,300, 400, 400, 2));
+    */
+
+    alphas = {
+        one: 1,
+        two: 0.5,
+    };
+
+    function drawScene () {
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        for(var i in diamonds) {
+            var diamond = diamonds[i];
+            let size = randomInt(200);
+
+            if(diamond.group == 1) {
+                gl.uniform1f(alphaUniform, alphas.one);
+            } else { // Groun 2
+                gl.uniform1f(alphaUniform, alphas.two);
+            }
+
+            gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    diamond.vertex,
+                    gl.STATIC_DRAW);
+
+            // Set a random color.
+            gl.uniform4f(colorLocation, diamond.fragment.r, diamond.fragment.g, diamond.fragment.b, diamond.fragment.a);
+
+            // draw
+            gl.drawArrays(gl.TRIANGLES, 0, 6);
+        }
+    }
+    drawScene ();
 
 </script>
 </body>
